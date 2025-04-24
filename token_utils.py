@@ -6,7 +6,10 @@ import streamlit as st
 
 def load_credentials_from_gsheet():
     try:
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"  # ✅ Added to fix insufficient permissions error
+        ]
 
         # ✅ Directly use Streamlit's secrets as dict
         creds = Credentials.from_service_account_info(st.secrets["gcreds"], scopes=scopes)
