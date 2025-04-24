@@ -2,7 +2,7 @@
 import requests
 import streamlit as st
 
-def fetch_sector_stock_changes():
+def fetch_sector_stock_changes(api_key, access_token):
     try:
         url = "https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050"
         headers = {
