@@ -89,6 +89,10 @@ def fetch_sector_stock_changes(api_key, access_token):
         for symbol in instruments:
             try:
                 ltp_info = ltp_data[f"NSE:{symbol}"]
+                st.write(f"📦 Raw LTP for {symbol}:", ltp_info)
+                if "ohlc" not in ltp_info:
+                    st.warning(f"⚠️ Skipping {symbol} because 'ohlc' not found in LTP data.")
+                    continue
                 last_price = ltp_info['last_price']
                 prev_close = ltp_info['ohlc']['close']
                 change_pct = (last_price - prev_close) / prev_close * 100
