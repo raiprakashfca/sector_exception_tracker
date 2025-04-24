@@ -78,7 +78,7 @@ def fetch_sector_stock_changes(api_key, access_token):
 
         instruments = list(SECTOR_MAP.keys())
         ltp_input = [f"NSE:{symbol}" for symbol in instruments]
-        st.write("📤 Instruments sent to kite.ltp():", ltp_input)
+        
         ltp_data = kite.quote(ltp_input)
 
         result = []
@@ -89,7 +89,7 @@ def fetch_sector_stock_changes(api_key, access_token):
         for symbol in instruments:
             try:
                 ltp_info = ltp_data[f"NSE:{symbol}"]
-                st.write(f"📦 Raw LTP for {symbol}:", ltp_info)
+                
                 if "ohlc" not in ltp_info:
                     st.warning(f"⚠️ Skipping {symbol} because 'ohlc' not found in LTP data.")
                     continue
@@ -104,7 +104,7 @@ def fetch_sector_stock_changes(api_key, access_token):
                     "last_price": last_price,
                     "%change": round(change_pct, 2)
                 })
-                st.write(f"✅ {symbol} → Last Price: {last_price}, Close: {prev_close}, Change%: {change_pct:.2f}")
+                
 
                 if sector not in sector_averages:
                     sector_averages[sector] = 0
@@ -137,9 +137,9 @@ def fetch_sector_stock_changes(api_key, access_token):
             log_to_google_sheet(exceptions)
 
         if not result:
-            st.warning("⚠️ No valid LTP data fetched. The result list is empty.")
+            
 
-        st.write("✅ Final Result Preview:", result)
+        
         return result
 
     except Exception as e:
