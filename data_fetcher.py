@@ -79,7 +79,7 @@ def fetch_sector_stock_changes(api_key, access_token):
         instruments = list(SECTOR_MAP.keys())
         ltp_input = [f"NSE:{symbol}" for symbol in instruments]
         st.write("📤 Instruments sent to kite.ltp():", ltp_input)
-        ltp_data = kite.ltp(ltp_input)
+        ltp_data = kite.quote(ltp_input)
 
         result = []
         sector_averages = {}
