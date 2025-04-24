@@ -19,6 +19,7 @@ api_key, api_secret, access_token = credentials
 
 # Fetch sector stock changes
 raw_result = fetch_sector_stock_changes(api_key, access_token)
+st.write("📦 Raw fetch result:", raw_result)
 
 # Convert to DataFrame and prepare for exception detection
 sector_df = pd.DataFrame(raw_result)
