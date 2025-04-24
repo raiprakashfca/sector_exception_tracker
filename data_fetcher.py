@@ -1,29 +1,57 @@
 # data_fetcher.py
 import pandas as pd
+import requests
 from kiteconnect import KiteConnect
 from datetime import datetime
+from bs4 import BeautifulSoup
+
+def fetch_nse_sector_constituents():
+    url = "https://www1.nseindia.com/live_market/dynaContent/live_watch/stock_watch/niftyStockWatch.json"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    sector_map = {}
+    for item in data['data']:
+        symbol = item['symbol']
+        index_name = item['index']
+        if index_name == "NIFTY 50":
+            continue  # Ignore NIFTY 50 as a sector
+        if index_name not in sector_map:
+            sector_map[index_name] = []
+        sector_map[index_name].append(symbol)
+
+    return sector_map
 
 def fetch_sector_stock_changes(api_key, access_token):
     kite = KiteConnect(api_key=api_key)
     kite.set_access_token(access_token)
 
-    # Define sectors and their constituents (basic example, can be fetched from NSE later)
-    sectors = {
-        "NIFTY BANK": ["AXISBANK", "HDFCBANK", "ICICIBANK", "KOTAKBANK", "SBIN"],
-        "NIFTY IT": ["TCS", "INFY", "WIPRO", "TECHM", "LTIM"]
+    # Dynamically pull sector constituents from NSE
+    sectors = fetch_nse_sector_constituents()
+
+    sector_tokens = {
+        "NIFTY BANK": "NSE:NIFTY_BANK",
+        "NIFTY IT": "NSE:NIFTY_IT",
+        "NIFTY FMCG": "NSE:NIFTY_FMCG",
+        "NIFTY AUTO": "NSE:NIFTY_AUTO",
+        "NIFTY METAL": "NSE:NIFTY_METAL",
+        "NIFTY PHARMA": "NSE:NIFTY_PHARMA",
+        "NIFTY FINANCIAL SERVICES": "NSE:NIFTY_FIN_SERVICE",
+        "NIFTY ENERGY": "NSE:NIFTY_ENERGY",
     }
 
     symbols = [f"NSE:{sym}" for sec in sectors for sym in sectors[sec]]
-    sector_indices = ["NSE:NIFTY_BANK", "NSE:NIFTY_IT"]
-    all_tokens = sector_indices + symbols
+    sector_indices = list(sector_tokens.values())
+    all_tokens = list(set(symbols + sector_indices))
 
-    # Get LTP
     ltp_data = kite.ltp(all_tokens)
 
-    # Extract opening price and last traded price (using ltp call)
     result = []
     for sector, stocks in sectors.items():
-        sector_token = f"NSE:{sector.split()[-1]}"  # e.g., NIFTY_BANK
+        sector_token = sector_tokens.get(sector)
+        if not sector_token:
+            continue
         sector_info = ltp_data.get(sector_token, {})
         sector_ltp = sector_info.get("last_price")
         sector_open = sector_info.get("ohlc", {}).get("open")
