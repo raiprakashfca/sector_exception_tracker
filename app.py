@@ -8,10 +8,13 @@ from token_utils import load_credentials_from_gsheet
 from data_fetcher import fetch_sector_stock_changes
 from sector_logic import identify_exceptions
 from logger import log_exceptions_to_sheet
-
+from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="📊 Sector Exception Tracker", layout="wide")
 
 st.title("📊 Sector-Wise Exception Tracker")
+
+# Automatically refresh every 5 minutes (300000 ms)
+st_autorefresh(interval=5 * 60 * 1000, key="auto_refresh")
 
 # Adjustable threshold
 threshold = st.slider("Set Divergence Threshold (%)", min_value=0.1, max_value=3.0, value=1.0, step=0.1)
