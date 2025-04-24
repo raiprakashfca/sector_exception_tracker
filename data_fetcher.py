@@ -128,6 +128,9 @@ def fetch_sector_stock_changes(api_key, access_token):
         if exceptions:
             log_to_google_sheet(exceptions)
 
+        if not result:
+            st.warning("⚠️ No valid LTP data fetched. The result list is empty.")
+
         return result
 
     except Exception as e:
