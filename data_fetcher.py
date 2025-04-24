@@ -90,7 +90,8 @@ def fetch_sector_stock_changes(api_key, access_token):
             try:
                 ltp_info = ltp_data[f"NSE:{symbol}"]
                 last_price = ltp_info['last_price']
-                change_pct = ltp_info['net_change'] / (last_price - ltp_info['net_change']) * 100
+                prev_close = ltp_info['ohlc']['close']
+                change_pct = (last_price - prev_close) / prev_close * 100
                 sector = SECTOR_MAP[symbol]
 
                 result.append({
