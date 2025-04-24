@@ -71,7 +71,7 @@ def log_to_google_sheet(rows):
     except Exception as e:
         st.error(f"❌ Failed to log to Google Sheet: {e}")
 
-def fetch_sector_stock_changes(api_key, access_token):
+def fetch_sector_stock_changes(api_key, access_token, threshold=2):
     try:
         kite = KiteConnect(api_key=api_key)
         kite.set_access_token(access_token)
@@ -91,7 +91,7 @@ def fetch_sector_stock_changes(api_key, access_token):
                 ltp_info = ltp_data[f"NSE:{symbol}"]
                 
                 if "ohlc" not in ltp_info:
-                                    continue  # 'ohlc' not available, skipping
+                    continue  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping
                     continue
                 last_price = ltp_info['last_price']
                 prev_close = ltp_info['ohlc']['close']
@@ -114,7 +114,8 @@ def fetch_sector_stock_changes(api_key, access_token):
                 sector_counts[sector] += 1
 
             except Exception as e:
-                                pass  # Suppressed warning in production
+                # Optionally log this: st.write(f"Skipping {symbol} due to error: {e}")
+                continue  # Suppressed warning in production
 
         # Calculate sector averages
         for sector in sector_averages:
@@ -126,7 +127,7 @@ def fetch_sector_stock_changes(api_key, access_token):
         for stock in result:
             sector_avg = sector_averages[stock["sector"]]
             diff = stock["%change"] - sector_avg
-            if abs(diff) >= 2:  # configurable threshold
+            if abs(diff) >= threshold:  # configurable threshold
                 exceptions.append([
                     now.split()[0], now.split()[1],
                     stock["symbol"], stock["sector"],
