@@ -6,3 +6,4 @@ google-auth==2.22.0
 kiteconnect
 requests
 beautifulsoup4
+streamlit-autorefresh
