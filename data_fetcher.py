@@ -135,12 +135,7 @@ def fetch_sector_stock_changes(api_key, access_token):
 
         if exceptions:
             log_to_google_sheet(exceptions)
-
-        if not result:
-            
-
-        
-        return result
+return result
 
     except Exception as e:
         st.error(f"❌ Error fetching sector stock changes: {e}")
