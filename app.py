@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import time
@@ -21,6 +22,9 @@ token_data = load_credentials_from_gsheet()
 if not token_data:
     st.error("❌ Failed to load Zerodha credentials from Google Sheet.")
     st.stop()
+else:
+    st.success("✅ Zerodha credentials loaded successfully from Google Sheet.")
+    st.write({"API Key": token_data[0], "API Secret": "****", "Access Token": "****"})
 
 api_key, api_secret, access_token = token_data
 
