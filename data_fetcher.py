@@ -91,7 +91,7 @@ def fetch_sector_stock_changes(api_key, access_token):
                 ltp_info = ltp_data[f"NSE:{symbol}"]
                 
                 if "ohlc" not in ltp_info:
-                    st.warning(f"⚠️ Skipping {symbol} because 'ohlc' not found in LTP data.")
+                                    continue  # 'ohlc' not available, skipping
                     continue
                 last_price = ltp_info['last_price']
                 prev_close = ltp_info['ohlc']['close']
@@ -114,7 +114,7 @@ def fetch_sector_stock_changes(api_key, access_token):
                 sector_counts[sector] += 1
 
             except Exception as e:
-                st.warning(f"⚠️ Could not fetch LTP for {symbol}: {e}")
+                                pass  # Suppressed warning in production
 
         # Calculate sector averages
         for sector in sector_averages:
@@ -135,7 +135,7 @@ def fetch_sector_stock_changes(api_key, access_token):
 
         if exceptions:
             log_to_google_sheet(exceptions)
-return result
+        return result
 
     except Exception as e:
         st.error(f"❌ Error fetching sector stock changes: {e}")
