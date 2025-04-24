@@ -1,0 +1,8 @@
+streamlit
+pandas
+gspread
+oauth2client
+google-auth
+kiteconnect
+requests
+beautifulsoup4
