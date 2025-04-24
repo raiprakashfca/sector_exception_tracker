@@ -91,7 +91,7 @@ def fetch_sector_stock_changes(api_key, access_token, threshold=2):
                 ltp_info = ltp_data[f"NSE:{symbol}"]
                 
                 if "ohlc" not in ltp_info:
-                continue  # skip if no OHLC data  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping
+                    continue  # skip if no OHLC data  # skip if no OHLC data  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping  # 'ohlc' not available, skipping
                     continue
                 last_price = ltp_info['last_price']
                 prev_close = ltp_info['ohlc']['close']
