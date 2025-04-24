@@ -2,20 +2,18 @@
 import gspread
 from google.oauth2.service_account import Credentials
 import streamlit as st
-import json
+
 
 def load_credentials_from_gsheet():
     try:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
-        # Load service account credentials from Streamlit Secrets
-        creds_dict = json.loads(st.secrets["gcreds"])
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        # ✅ Directly use Streamlit's secrets as dict
+        creds = Credentials.from_service_account_info(st.secrets["gcreds"], scopes=scopes)
 
         client = gspread.authorize(creds)
         sheet = client.open("ZerodhaTokenStore").sheet1
 
-        # Read row 1 directly and log it
         data = sheet.row_values(1)
         st.write("🔍 Raw row values from Google Sheet:", data)
 
