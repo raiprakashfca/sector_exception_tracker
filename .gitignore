@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+*.DS_Store
+
+# Streamlit secrets and credentials
+gcreds.json
+.streamlit/secrets.toml
+
+# Jupyter and logs
+*.ipynb
+*.log
+
+# System files
+.vscode/
+.idea/
+.env/
+.env.*
+
+# OS-specific
+Thumbs.db
+.DS_Store
+
+# GitHub Actions cache
+/.python-version
+/.venv
+/venv/
