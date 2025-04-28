@@ -45,7 +45,8 @@ except Exception as e:
     existing_watchlist = []
 
 # Allow multi-select
-selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols, default=existing_watchlist)
+safe_existing_watchlist = [script for script in existing_watchlist if script in all_symbols]
+selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols, default=safe_existing_watchlist)
 
 # Save updated watchlist
 if st.button("💾 Save Watchlist"):
@@ -54,7 +55,6 @@ if st.button("💾 Save Watchlist"):
         st.success("✅ Watchlist saved successfully!")
     except Exception as e:
         st.error(f"❌ Failed to save watchlist: {e}")
-
 
 
 # Display current watchlist
