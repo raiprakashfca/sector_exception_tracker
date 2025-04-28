@@ -89,8 +89,10 @@ if not sector_df.empty:
     result_df = identify_exceptions(sector_df, threshold=threshold)
 
     st.subheader("📋 Sector Divergence Summary")
-    def highlight_exceptions(row):
-    return ['background-color: #ffcccc' if row['Exception'] else '' for _ in row] else '' for _ in row]
+
+# Correct function with proper indentation and logic
+def highlight_exceptions(row):
+    return ['background-color: #ffcccc' if row['Exception'] else '' for _ in row.index]
 
 styled_df = result_df.style\
     .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
