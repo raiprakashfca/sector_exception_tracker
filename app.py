@@ -6,9 +6,20 @@ from streamlit_autorefresh import st_autorefresh
 from token_utils import load_credentials_from_gsheet
 from data_fetcher import fetch_sector_stock_changes
 from sector_logic import identify_exceptions
+import gspread
+from kiteconnect import KiteConnect
 
 # Page configuration
-st.set_page_config(page_title="📊 Sector-Wise Exception Tracker", layout="wide")
+st.set_page_config(page_title="📊 Sector-Wise Exception Tracker", layout="wide", initial_sidebar_state="expanded", page_icon="📈")
+
+# Dark theme styling and increased font size
+st.markdown("""
+    <style>
+        body {background-color: #0e1117; color: white;}
+        .stDataFrame {background-color: #0e1117; color: white; font-size: 18px;}
+        div.row-widget.stRadio > div{flex-direction:row;}
+    </style>
+    """, unsafe_allow_html=True)
 
 # Auto-refresh every 1 minute
 st_autorefresh(interval=60 * 1000, key="auto_refresh")
@@ -26,8 +37,6 @@ if not credentials:
 api_key, api_secret, access_token = credentials
 
 # Fetch instrument list for suggestions
-import gspread
-from kiteconnect import KiteConnect
 kite = KiteConnect(api_key=api_key)
 kite.set_access_token(access_token)
 
@@ -49,13 +58,16 @@ safe_existing_watchlist = [script for script in existing_watchlist if script in 
 selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols, default=safe_existing_watchlist)
 
 # Save updated watchlist
-if st.button("💾 Save Watchlist"):
-    try:
-        watchlist_sheet.update([['Script']] + [[script] for script in selected_scripts])
-        st.success("✅ Watchlist saved successfully!")
-    except Exception as e:
-        st.error(f"❌ Failed to save watchlist: {e}")
-
+if set(selected_scripts) != set(existing_watchlist):
+    if st.button("💾 Save Watchlist"):
+        with st.spinner("Saving watchlist..."):
+            try:
+                watchlist_sheet.update([['Script']] + [[script] for script in selected_scripts])
+                st.success("✅ Watchlist saved successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to save watchlist: {e}")
+else:
+    st.info("ℹ️ No changes detected. Watchlist already up to date.")
 
 # Display current watchlist
 if selected_scripts:
@@ -78,14 +90,14 @@ if not sector_df.empty:
 
     st.subheader("📋 Sector Divergence Summary")
     styled_df = result_df.style\
-    .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
-    .apply(lambda x: ['background-color: #ffcccc' if v else '' for v in x['Exception']] if 'Exception' in x else ['']*len(x), axis=1)\
-    .applymap(lambda val: 'color: green;' if isinstance(val, (float, int)) and val > 0 else ('color: red;' if isinstance(val, (float, int)) and val < 0 else ''))\
-    .set_table_styles([\
-        {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#f9f9f9')]},\
-        {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', '#ffffff')]}\
-    ], overwrite=False)
+        .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
+        .apply(lambda x: ['background-color: #ffcccc' if v else '' for v in x['Exception']] if 'Exception' in x else ['']*len(x), axis=1)\
+        .applymap(lambda val: 'color: green;' if isinstance(val, (float, int)) and val > 0 else ('color: red;' if isinstance(val, (float, int)) and val < 0 else ''))\
+        .set_table_styles([
+            {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#12151c')]},
+            {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', '#0e1117')]}
+        ], overwrite=False)
 
-st.dataframe(styled_df)
+    st.dataframe(styled_df)
 else:
     st.info("✅ Market data fetched but no exceptions identified at the current threshold.")
