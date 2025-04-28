@@ -36,7 +36,7 @@ all_symbols = sorted({inst['tradingsymbol'] for inst in instruments if inst['seg
 
 # Load existing watchlist from Google Sheet
 try:
-    gc = gspread.service_account_from_dict(eval(st.secrets["gcreds"]))
+    gc = gspread.service_account_from_dict(st.secrets["gcreds"])
     sh = gc.open("SectorWatchlist")
     watchlist_sheet = sh.sheet1
     existing_watchlist = watchlist_sheet.col_values(1)[1:]  # skip header
@@ -55,7 +55,7 @@ if st.button("💾 Save Watchlist"):
     except Exception as e:
         st.error(f"❌ Failed to save watchlist: {e}")
 
-selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols)
+
 
 # Display current watchlist
 if selected_scripts:
