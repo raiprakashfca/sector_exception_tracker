@@ -36,9 +36,7 @@ all_symbols = sorted({inst['tradingsymbol'] for inst in instruments if inst['seg
 
 # Load existing watchlist from Google Sheet
 try:
-    import json
-    gcreds_dict = json.loads(st.secrets["gcreds"])
-    gc = gspread.service_account_from_dict(gcreds_dict)
+    gc = gspread.service_account_from_dict(st.secrets["gcreds"])
     sh = gc.open("SectorWatchlist")
     watchlist_sheet = sh.sheet1
     existing_watchlist = watchlist_sheet.col_values(1)[1:]  # skip header
