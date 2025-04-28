@@ -89,15 +89,18 @@ if not sector_df.empty:
     result_df = identify_exceptions(sector_df, threshold=threshold)
 
     st.subheader("📋 Sector Divergence Summary")
-    styled_df = result_df.style\
-        .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
-        .apply(lambda x: ['background-color: #ffcccc' if v else '' for v in x['Exception']] if 'Exception' in x else ['']*len(x), axis=1)\
-        .applymap(lambda val: 'color: green;' if isinstance(val, (float, int)) and val > 0 else ('color: red;' if isinstance(val, (float, int)) and val < 0 else ''))\
-        .set_table_styles([
-            {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#12151c')]},
-            {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', '#0e1117')]}
-        ], overwrite=False)
+    def highlight_exceptions(row):
+    return ['background-color: #ffcccc' if row['Exception'] else '' for _ in row]
 
-    st.dataframe(styled_df)
+styled_df = result_df.style\
+    .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
+    .apply(highlight_exceptions, axis=1)\
+    .applymap(lambda val: 'color: green;' if isinstance(val, (float, int)) and val > 0 else ('color: red;' if isinstance(val, (float, int)) and val < 0 else ''))\
+    .set_table_styles([
+        {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#12151c')]},
+        {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', '#0e1117')]}
+    ], overwrite=False)
+
+st.dataframe(styled_df)
 else:
     st.info("✅ Market data fetched but no exceptions identified at the current threshold.")
