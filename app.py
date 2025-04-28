@@ -25,6 +25,42 @@ if not credentials:
     st.stop()
 api_key, api_secret, access_token = credentials
 
+# Fetch instrument list for suggestions
+import gspread
+from kiteconnect import KiteConnect
+kite = KiteConnect(api_key=api_key)
+kite.set_access_token(access_token)
+
+instruments = kite.instruments("NSE")
+all_symbols = sorted({inst['tradingsymbol'] for inst in instruments if inst['segment'] == 'NSE'})
+
+# Load existing watchlist from Google Sheet
+try:
+    gc = gspread.service_account_from_dict(eval(st.secrets["gcreds"]))
+    sh = gc.open("SectorWatchlist")
+    watchlist_sheet = sh.sheet1
+    existing_watchlist = watchlist_sheet.col_values(1)[1:]  # skip header
+except Exception as e:
+    st.error(f"❌ Failed to load watchlist: {e}")
+    existing_watchlist = []
+
+# Allow multi-select
+selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols, default=existing_watchlist)
+
+# Save updated watchlist
+if st.button("💾 Save Watchlist"):
+    try:
+        watchlist_sheet.update([['Script']] + [[script] for script in selected_scripts])
+        st.success("✅ Watchlist saved successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to save watchlist: {e}")
+
+selected_scripts = st.multiselect("🔎 Search and Add Scripts to Watchlist:", options=all_symbols)
+
+# Display current watchlist
+if selected_scripts:
+    st.success(f"📋 Current Watchlist: {', '.join(selected_scripts)}")
+
 # Fetch data
 raw_result = fetch_sector_stock_changes(api_key, access_token)
 
