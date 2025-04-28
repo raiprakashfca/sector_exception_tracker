@@ -1,7 +1,7 @@
 # app.py
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
 from token_utils import load_credentials_from_gsheet
 from data_fetcher import fetch_sector_stock_changes
@@ -15,7 +15,8 @@ st_autorefresh(interval=60 * 1000, key="auto_refresh")
 
 # Page title and last updated time
 st.title("📊 Sector-Wise Exception Tracker")
-st.caption(f"🕒 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+st.caption(f"🕒 Last Updated (IST): {ist_now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 # Load credentials
 credentials = load_credentials_from_gsheet()
