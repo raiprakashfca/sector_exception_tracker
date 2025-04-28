@@ -77,6 +77,15 @@ if not sector_df.empty:
     result_df = identify_exceptions(sector_df, threshold=threshold)
 
     st.subheader("📋 Sector Divergence Summary")
-    st.dataframe(result_df.style.format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"}))
+    styled_df = result_df.style\
+    .format({"Stock % Change": "{:.2f}", "Sector % Change": "{:.2f}"})\
+    .apply(lambda x: ['background-color: #ffcccc' if v else '' for v in x['Exception']] if 'Exception' in x else ['']*len(x), axis=1)\
+    .applymap(lambda val: 'color: green;' if isinstance(val, (float, int)) and val > 0 else ('color: red;' if isinstance(val, (float, int)) and val < 0 else ''))\
+    .set_table_styles([\
+        {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#f9f9f9')]},\
+        {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', '#ffffff')]}\
+    ], overwrite=False)
+
+st.dataframe(styled_df)
 else:
     st.info("✅ Market data fetched but no exceptions identified at the current threshold.")
