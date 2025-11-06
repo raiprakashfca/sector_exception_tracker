@@ -57,10 +57,12 @@ def parse_iso_aware(ts: str) -> Optional[datetime]:
         return None
 
 # ------------------------------------------------------------------------------------
-# Auto-refresh every 60s (configurable in sidebar)
+# Auto-refresh control (skip when ?no_refresh=1)
 # ------------------------------------------------------------------------------------
 refresh_secs = st.sidebar.slider("Auto-refresh (seconds)", 15, 300, 60)
-st_autorefresh(interval=refresh_secs * 1000, key="auto_refresh")
+params = st.query_params
+if params.get("no_refresh", ["0"])[0] != "1":
+    st_autorefresh(interval=refresh_secs * 1000, key="auto_refresh")
 
 # ------------------------------------------------------------------------------------
 # Title & server time
@@ -73,11 +75,6 @@ st.caption(f"🕒 Server time: {fmt_ist(now_ist())}")
 # ------------------------------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_gspread_client() -> gspread.client.Client:
-    """
-    Build a read/write gspread client from Streamlit secrets.
-    Expects st.secrets['gcreds'] (service account JSON dict).
-    """
-    # Prefer native google.oauth2 (less brittle than gspread.service_account_from_dict in Streamlit)
     sa = st.secrets.get("gcreds", None)
     if not sa:
         raise RuntimeError("gcreds not found in st.secrets")
@@ -90,31 +87,18 @@ def get_gspread_client() -> gspread.client.Client:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_watchlist_sheet(gc: gspread.client.Client):
-    try:
-        sh = gc.open("SectorWatchlist")
-        return sh.sheet1
-    except Exception as e:
-        # Propagate: the caller will handle and degrade gracefully
-        raise RuntimeError(f"Failed opening 'SectorWatchlist': {e}")
+    sh = gc.open("SectorWatchlist")
+    return sh.sheet1
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_existing_watchlist(sheet) -> list:
-    try:
-        vals = sheet.col_values(1)
-        if not vals:
-            return []
-        header = vals[0].strip().lower() if vals else "script"
-        data = vals[1:] if len(vals) > 1 else []
-        return [v.strip() for v in data if v.strip()]
-    except Exception as e:
-        raise RuntimeError(f"Reading watchlist failed: {e}")
+    vals = sheet.col_values(1)
+    if not vals:
+        return []
+    return [v.strip() for v in vals[1:] if v.strip()]
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def read_meta_last_updated(gc: gspread.client.Client) -> Optional[str]:
-    """
-    Optional: reads SectorExceptionLog -> Meta sheet -> first row col 'last_updated_ist'
-    If not present, returns None (UI will fall back to 'data as of server time').
-    """
     try:
         sh = gc.open("SectorExceptionLog")
         ws = sh.worksheet("Meta")
@@ -133,22 +117,15 @@ def build_kite(api_key: str, access_token: str) -> KiteConnect:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_instruments_safe(kite: KiteConnect) -> pd.DataFrame:
-    """
-    Instruments list changes rarely. Cache for an hour.
-    """
     data = kite.instruments("NSE")
     return pd.DataFrame(data)
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_data_cached(api_key: str, access_token: str):
-    """
-    60s TTL to keep data fresh but avoid hammering sources.
-    Assumes fetch_sector_stock_changes returns an iterable/dict list.
-    """
     return fetch_sector_stock_changes(api_key, access_token)
 
 # ------------------------------------------------------------------------------------
-# 1) Load credentials (no caching; fail loud if missing)
+# Load credentials
 # ------------------------------------------------------------------------------------
 credentials = load_credentials_from_gsheet()
 if not credentials:
@@ -157,29 +134,27 @@ if not credentials:
 api_key, api_secret, access_token = credentials
 
 # ------------------------------------------------------------------------------------
-# 2) Validate token / warm up Kite (fail loud, but don't poison cache)
+# Validate token / create Kite client
 # ------------------------------------------------------------------------------------
 try:
     kite = build_kite(api_key, access_token)
-    # Lightweight validity check: attempt a tiny instruments fetch (raises on invalid token)
     _ = kite.instruments("NSE")[:1]
 except kite_ex.TokenException as e:
-    st.error(f"❌ Invalid/expired access token. {e}. Please refresh your Zerodha token (C1) and reload.")
+    st.error(f"❌ Invalid/expired access token. {e}. Please refresh your Zerodha token.")
     st.stop()
 except Exception as e:
     st.error(f"❌ Zerodha connectivity error: {e}")
     st.stop()
 
 # ------------------------------------------------------------------------------------
-# 3) Read optional data "freshness" meta
+# Meta freshness indicator
 # ------------------------------------------------------------------------------------
 meta_badge = ""
 last_updated_text = None
 try:
     gc = get_gspread_client()
     last_updated_text = read_meta_last_updated(gc)
-except Exception as e:
-    # Meta is optional; don't kill the app
+except Exception:
     last_updated_text = None
 
 if last_updated_text:
@@ -199,27 +174,22 @@ else:
     st.markdown(f"**Data as of:** (no meta timestamp found) &nbsp; <span class='warn-badge'>Unknown</span>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------------
-# 4) Instruments & Watchlist (robust; won't crash if Sheet missing)
+# Instruments & Watchlist
 # ------------------------------------------------------------------------------------
 all_symbols = []
 watchlist_sheet = None
 existing_watchlist = []
 
-# Instruments (cached)
 try:
     instruments_df = fetch_instruments_safe(kite)
-    # Use segment filter if present
     if "segment" in instruments_df.columns:
         instruments_df = instruments_df[instruments_df["segment"] == "NSE"]
     if "tradingsymbol" in instruments_df.columns:
         all_symbols = sorted(set(instruments_df["tradingsymbol"].astype(str)))
-    else:
-        all_symbols = []
 except Exception as e:
-    st.warning(f"⚠️ Could not fetch instruments list: {e}. Symbol picker disabled.")
+    st.warning(f"⚠️ Could not fetch instruments list: {e}")
     all_symbols = []
 
-# Watchlist (cached)
 try:
     watchlist_sheet = get_watchlist_sheet(gc)
     existing_watchlist = fetch_existing_watchlist(watchlist_sheet)
@@ -227,7 +197,6 @@ except Exception as e:
     st.warning(f"⚠️ Watchlist not available: {e}")
     existing_watchlist = []
 
-# Multiselect with safe default
 safe_existing_watchlist = [s for s in existing_watchlist if s in all_symbols] if all_symbols else existing_watchlist
 selected_scripts = st.multiselect(
     "🔎 Search and Add Scripts to Watchlist:",
@@ -239,22 +208,19 @@ col_a, col_b, col_c = st.columns([1,1,2])
 with col_a:
     if st.button("💾 Save Watchlist", use_container_width=True, type="primary", disabled=watchlist_sheet is None):
         if watchlist_sheet is None:
-            st.error("❌ Watchlist sheet unavailable. Cannot save.")
+            st.error("❌ Watchlist sheet unavailable.")
         else:
             try:
-                # Clear and write fresh
                 data = [['Script']] + [[s] for s in selected_scripts]
                 watchlist_sheet.clear()
                 watchlist_sheet.update(data)
                 st.success("✅ Watchlist saved.")
-                # Invalidate caches that depend on this
                 fetch_existing_watchlist.clear()
             except Exception as e:
                 st.error(f"❌ Failed to save watchlist: {e}")
 
 with col_b:
     if st.button("🔄 Refresh now", use_container_width=True):
-        # Clear only our data caches; do not clear credentials
         fetch_data_cached.clear()
         fetch_instruments_safe.clear()
         st.rerun()
@@ -262,15 +228,15 @@ with col_b:
 if selected_scripts:
     st.success(f"📋 Current Watchlist: {', '.join(selected_scripts)}")
 else:
-    st.info("ℹ️ Add scripts to your watchlist to focus the analysis. The app will still fetch market data.")
+    st.info("ℹ️ Add scripts to your watchlist to focus analysis.")
 
 # ------------------------------------------------------------------------------------
-# 5) Threshold
+# Threshold
 # ------------------------------------------------------------------------------------
 threshold = st.slider("📈 Exception Threshold (%)", min_value=0.5, max_value=5.0, step=0.5, value=2.0)
 
 # ------------------------------------------------------------------------------------
-# 6) Fetch market data (cached 60s). Fail loud but don't cache failures.
+# Fetch data
 # ------------------------------------------------------------------------------------
 try:
     raw_result = fetch_data_cached(api_key, access_token)
@@ -284,56 +250,38 @@ except Exception as e:
     st.stop()
 
 # ------------------------------------------------------------------------------------
-# 7) Transform & display
+# Transform & Display
 # ------------------------------------------------------------------------------------
 sector_df = pd.DataFrame(raw_result) if raw_result is not None else pd.DataFrame()
 
 if not sector_df.empty:
-    # Expected keys from fetch_sector_stock_changes: ['symbol','sector','%change', ...]
     rename_map = {"symbol": "Stock", "sector": "Sector", "%change": "Stock % Change"}
-    present_keys = {k for k in rename_map if k in sector_df.columns}
-    sector_df = sector_df.rename(columns={k: rename_map[k] for k in present_keys})
+    sector_df = sector_df.rename(columns={k: v for k, v in rename_map.items() if k in sector_df.columns})
 
-    # Filter to selected watchlist if provided
-    if selected_scripts:
-        sector_df = sector_df[sector_df["Stock"].isin(selected_scripts)] if "Stock" in sector_df.columns else sector_df
+    if selected_scripts and "Stock" in sector_df.columns:
+        sector_df = sector_df[sector_df["Stock"].isin(selected_scripts)]
 
-    # Sector averages
     if "Sector" in sector_df.columns and "Stock % Change" in sector_df.columns:
         sector_avg_map = sector_df.groupby("Sector")["Stock % Change"].mean().to_dict()
         sector_df["Sector % Change"] = sector_df["Sector"].map(sector_avg_map)
-    else:
-        st.warning("⚠️ Missing columns required for sector averages. Check your data_fetcher output.")
-    
-    # Identify exceptions
-    try:
-        result_df = identify_exceptions(sector_df, threshold=threshold)
-    except Exception as e:
-        st.error(f"❌ Exception identification failed: {e}")
-        st.stop()
+
+    result_df = identify_exceptions(sector_df, threshold=threshold)
 
     st.subheader("📋 Sector Divergence Summary")
 
     def highlight_exceptions(row):
-        return [
-            'background-color: #ffcccc' if row.get('Exception', False) else ''
-            for _ in row.index
-        ]
+        return ['background-color: #ffcccc' if row.get('Exception', False) else '' for _ in row.index]
 
     def color_numbers(val):
         if isinstance(val, (float, int)):
             if val > 0:
                 return 'color: green;'
-            if val < 0:
+            elif val < 0:
                 return 'color: red;'
         return ''
 
-    # Format & style
-    show_cols = []
-    for col in ["Stock", "Sector", "Stock % Change", "Sector % Change", "Delta %", "Exception"]:
-        if col in result_df.columns:
-            show_cols.append(col)
-    display_df = result_df[show_cols].copy() if show_cols else result_df
+    cols_to_show = [c for c in ["Stock","Sector","Stock % Change","Sector % Change","Delta %","Exception"] if c in result_df.columns]
+    display_df = result_df[cols_to_show].copy() if cols_to_show else result_df
 
     styled_df = (
         display_df.style
@@ -351,4 +299,4 @@ if not sector_df.empty:
 
     st.dataframe(styled_df, use_container_width=True)
 else:
-    st.info("✅ Live fetch returned no rows at the moment (or filter removed all). Try broadening your watchlist or lowering the threshold.")
+    st.info("✅ No sector exceptions identified at the current threshold.")
